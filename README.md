@@ -1,1 +1,2185 @@
-# Bash-scripting
+# Bash-scripting# Bash Scripting — Complete Professional Guide
+### For Cybersecurity & General Mastery
+> Full English | Self-Contained | No External Resource Needed
+> Covers: Fundamentals → Intermediate → Advanced → Pentesting Applications
+
+---
+
+## TABLE OF CONTENTS
+
+```
+PART 1 — FOUNDATION
+  01. How Shell & Bash Work
+  02. Terminal Navigation Basics
+  03. Your First Script
+  04. Variables & Data Types
+  05. Quoting Rules (Critical!)
+  06. Arithmetic
+  07. String Manipulation
+
+PART 2 — CONTROL FLOW
+  08. Conditions & Tests
+  09. Loops
+  10. Functions
+  11. Arrays
+
+PART 3 — POWER TOOLS
+  12. Input / Output Redirection
+  13. Pipes & Process Substitution
+  14. Text Processing — grep, sed, awk, cut, sort, uniq, tr, wc
+  15. Regular Expressions
+
+PART 4 — PROFESSIONAL SCRIPTING
+  16. Script Structure & Best Practices
+  17. Error Handling & Debugging
+  18. File & Directory Operations
+  19. Process Management
+  20. Scheduling with Cron
+
+PART 5 — CYBERSECURITY APPLICATIONS
+  21. Network Commands in Bash
+  22. Recon Automation
+  23. Log Analysis
+  24. Custom Tool Building
+
+PART 6 — PRACTICE PROJECTS
+  25. Beginner → Advanced Projects
+```
+
+---
+
+# PART 1 — FOUNDATION
+
+---
+
+## 01. How Shell & Bash Work
+
+### What is a Shell?
+The shell is a **program** that reads your commands and tells the operating system what to do. It is the bridge between you and the Linux kernel.
+
+```
+You → Type command → Shell interprets it → Kernel executes it → Result shown to you
+```
+
+### Types of Shells
+| Shell | Name | Notes |
+|---|---|---|
+| `bash` | Bourne Again Shell | Default on most Linux distros, Kali included |
+| `sh` | Bourne Shell | Older, minimal |
+| `zsh` | Z Shell | Default on macOS, feature-rich |
+| `fish` | Fish Shell | Beginner-friendly |
+
+Check which shell you are using:
+```bash
+echo $SHELL        # Your default shell
+echo $0            # Currently running shell
+cat /etc/shells    # All installed shells
+```
+
+### Interactive vs Non-Interactive Shell
+- **Interactive** — When you open a terminal and type commands manually
+- **Non-Interactive** — When a script runs (no human typing)
+
+### Login vs Non-Login Shell
+These load different config files:
+- **Login shell** loads: `/etc/profile` → `~/.bash_profile` → `~/.bashrc`
+- **Non-login shell** loads: `~/.bashrc` only
+
+> **Why this matters for security:** When you get a reverse shell on a target, knowing which type of shell you have helps you understand what environment variables and PATH are available.
+
+### Configuration Files
+| File | When it loads | Purpose |
+|---|---|---|
+| `~/.bashrc` | Every new terminal | Aliases, functions, prompt settings |
+| `~/.bash_profile` | Login shell only | Environment variables |
+| `~/.bash_history` | Always | Command history |
+| `/etc/bashrc` | System-wide | Applies to all users |
+
+Add your own aliases to `~/.bashrc`:
+```bash
+nano ~/.bashrc
+# Add at the bottom:
+alias ll='ls -la'
+alias ports='ss -tlnp'
+alias myip='curl -s https://api.ipify.org'
+```
+Then reload: `source ~/.bashrc`
+
+---
+
+## 02. Terminal Navigation Basics
+
+These are not "scripting" but you must know them cold before writing scripts.
+
+### Navigation
+```bash
+pwd                    # Print current directory
+ls                     # List files
+ls -la                 # List all files with permissions (long format)
+ls -lh                 # Human-readable file sizes
+cd /var/log            # Change to absolute path
+cd ..                  # Go one level up
+cd ~                   # Go to home directory
+cd -                   # Go back to previous directory
+```
+
+### File & Directory Management
+```bash
+mkdir tools            # Create directory
+mkdir -p a/b/c         # Create nested directories
+touch file.txt         # Create empty file
+cp file.txt backup.txt # Copy file
+cp -r dir/ backup/     # Copy directory recursively
+mv old.txt new.txt     # Move or rename
+rm file.txt            # Delete file
+rm -rf directory/      # Delete directory (be careful with this!)
+```
+
+### Viewing Files
+```bash
+cat file.txt           # Print whole file
+less file.txt          # View file page by page (q to quit)
+head -n 20 file.txt    # First 20 lines
+tail -n 20 file.txt    # Last 20 lines
+tail -f /var/log/auth.log  # Follow file in real-time (useful for logs!)
+```
+
+### Finding Files
+```bash
+find / -name "*.conf" 2>/dev/null          # Find all .conf files
+find /home -name "*.txt" -type f           # Only files
+find / -perm /4000 2>/dev/null             # Find SUID files (pentest!)
+find / -writable -type d 2>/dev/null       # Find writable directories
+locate passwd                              # Fast search (uses database)
+which nmap                                 # Find where a command lives
+```
+
+### Permissions
+```bash
+ls -la file.txt        # Shows: -rwxr-xr-- 1 user group size date name
+
+# Permission format: [type][owner][group][others]
+# r = read (4), w = write (2), x = execute (1)
+
+chmod +x script.sh          # Add execute for everyone
+chmod 755 script.sh         # rwxr-xr-x
+chmod 600 id_rsa            # rw------- (SSH key should be this)
+chmod 644 file.txt          # rw-r--r--
+chown user:group file.txt   # Change owner
+```
+
+---
+
+## 03. Your First Script
+
+### The Shebang Line
+```bash
+#!/bin/bash
+```
+This **must** be the very first line of every script. It tells the system: "Use Bash to run this file."
+
+Other valid shebangs:
+```bash
+#!/usr/bin/env bash    # More portable — finds bash wherever it is installed
+#!/bin/sh              # Use if you need maximum portability (no bash features)
+```
+
+**Recommendation:** Always use `#!/usr/bin/env bash` in professional scripts.
+
+### Creating, Permissioning, Running
+```bash
+# Step 1: Create file
+nano myscript.sh
+
+# Step 2: Add shebang + code
+#!/usr/bin/env bash
+echo "Hello World"
+
+# Step 3: Make executable
+chmod +x myscript.sh
+
+# Step 4: Run
+./myscript.sh
+
+# Alternative: Run without execute permission
+bash myscript.sh
+```
+
+### Script Template (use this for every new script)
+```bash
+#!/usr/bin/env bash
+# =============================================================
+# Script Name : tool_name.sh
+# Description : What this script does
+# Author      : Your Name
+# Date        : $(date +%Y-%m-%d)
+# Usage       : ./tool_name.sh [options] <target>
+# =============================================================
+
+set -euo pipefail   # Professional safety settings (explained in Part 4)
+
+# --- Variables ---
+TARGET=""
+OUTPUT_FILE="results.txt"
+
+# --- Main Logic ---
+main() {
+    echo "Script started"
+}
+
+main "$@"
+```
+
+---
+
+## 04. Variables & Data Types
+
+Bash has **no strict data types**. Everything is a string unless you use arithmetic operators.
+
+### Declaring Variables
+```bash
+name="Rasel"
+age=22
+target_ip="192.168.1.1"
+```
+
+**Critical Rules:**
+- NO spaces around `=`
+- `name="Rasel"` ✅
+- `name = "Rasel"` ❌ (Bash thinks `name` is a command)
+
+### Using Variables
+```bash
+echo $name             # Basic usage
+echo ${name}           # Safer — use this always
+echo "${name}"         # Safest — quoted (handles spaces in values)
+```
+
+### Variable Scope
+By default, variables in Bash are **global** within the script.
+Use `local` inside functions to limit scope:
+```bash
+my_function() {
+    local internal_var="only inside function"
+    global_var="visible everywhere"
+}
+```
+
+### Environment Variables
+These are special variables the system sets automatically:
+```bash
+echo $HOME        # Your home directory: /home/rasel
+echo $USER        # Current username
+echo $PATH        # Directories where commands are searched
+echo $PWD         # Current directory (same as pwd command)
+echo $OLDPWD      # Previous directory
+echo $HOSTNAME    # Machine hostname
+echo $TERM        # Terminal type
+echo $LANG        # System language
+echo $RANDOM      # Random number between 0-32767 (changes every time)
+echo $LINENO      # Current line number (useful for debugging)
+echo $BASH_VERSION
+```
+
+### Command Substitution
+Store command output in a variable:
+```bash
+current_user=$(whoami)
+current_date=$(date +"%Y-%m-%d")
+open_ports=$(nmap -p- $target | grep "open" | awk '{print $1}')
+
+echo "User: $current_user"
+echo "Date: $current_date"
+```
+
+Old style (still works but avoid):
+```bash
+current_user=`whoami`    # Backtick style — harder to read, avoid
+```
+
+### readonly Variables (Constants)
+```bash
+readonly MAX_THREADS=50
+readonly WORDLIST="/usr/share/wordlists/rockyou.txt"
+readonly LOG_FILE="/var/log/myscript.log"
+
+MAX_THREADS=100    # This will give an error: readonly variable
+```
+
+### Special Variables
+```bash
+$0       # Script name
+$1 $2    # First and second arguments
+$@       # All arguments as separate words: "$1" "$2" "$3"...
+$*       # All arguments as one word: "$1 $2 $3"
+$#       # Number of arguments
+$?       # Exit status of last command (0=success, non-zero=failure)
+$$       # Current process ID (PID) of the script
+$!       # PID of last background process
+$_       # Last argument of previous command
+```
+
+**Important — $? example:**
+```bash
+ping -c 1 192.168.1.1 &>/dev/null
+if [ $? -eq 0 ]; then
+    echo "Host is alive"
+else
+    echo "Host is down"
+fi
+```
+
+---
+
+## 05. Quoting Rules (Critical!)
+
+This is where most beginners make mistakes. Learn this properly.
+
+### Three Types of Quotes
+
+**1. Double Quotes `"..."` — Allows variable expansion**
+```bash
+name="Rasel"
+echo "Hello $name"          # Output: Hello Rasel
+echo "Home is $HOME"        # Output: Home is /home/rasel
+echo "Date: $(date)"        # Command substitution also works
+```
+
+**2. Single Quotes `'...'` — Everything literal, no expansion**
+```bash
+name="Rasel"
+echo 'Hello $name'          # Output: Hello $name  (literally)
+echo 'Home is $HOME'        # Output: Home is $HOME
+echo 'Price: $5.00'         # Safe for literal dollar signs
+```
+
+**3. Backslash `\` — Escape a single character**
+```bash
+echo "She said \"Hello\""   # Output: She said "Hello"
+echo "Cost: \$50"           # Output: Cost: $50
+echo "Path: C:\\Windows"    # Output: Path: C:\Windows
+```
+
+### Why Quoting Matters — The Space Problem
+```bash
+filename="my file with spaces.txt"
+
+cat $filename       # WRONG — Bash sees: cat my file with spaces.txt (4 args)
+cat "$filename"     # CORRECT — Bash sees: cat "my file with spaces.txt"
+```
+
+**Rule of thumb:** Always quote your variables with double quotes: `"$variable"`
+
+### ANSI-C Quoting `$'...'`
+For special characters like newline, tab:
+```bash
+echo $'Line 1\nLine 2'    # Output: two separate lines
+echo $'Column1\tColumn2'  # Tab-separated
+```
+
+---
+
+## 06. Arithmetic
+
+Bash treats everything as strings, so you need special syntax for math.
+
+### Method 1 — Double Parentheses (Recommended)
+```bash
+a=10
+b=3
+
+echo $((a + b))    # 13
+echo $((a - b))    # 7
+echo $((a * b))    # 30
+echo $((a / b))    # 3  (integer division only!)
+echo $((a % b))    # 1  (modulo/remainder)
+echo $((a ** b))   # 1000 (exponent)
+
+# Increment
+count=0
+((count++))        # count becomes 1
+((count+=5))       # count becomes 6
+((count--))        # count becomes 5
+```
+
+### Assigning arithmetic result to variable
+```bash
+result=$((10 * 5 + 3))
+echo $result    # 53
+```
+
+### Method 2 — let command
+```bash
+let result=10*5
+let count++
+let "result = 10 * 5 + 3"
+```
+
+### Method 3 — expr (old, avoid in scripts)
+```bash
+result=$(expr 10 + 5)    # Spaces required around operator
+```
+
+### Floating Point Math
+Bash does NOT support floats natively. Use `bc`:
+```bash
+echo "scale=2; 10 / 3" | bc          # Output: 3.33
+echo "scale=4; 22 / 7" | bc          # Output: 3.1428
+result=$(echo "scale=2; $a / $b" | bc)
+```
+
+---
+
+## 07. String Manipulation
+
+These are done using **parameter expansion**: `${variable...}`
+
+### String Length
+```bash
+str="Hello World"
+echo ${#str}        # Output: 11
+```
+
+### Substring Extraction
+```bash
+str="Hello World"
+echo ${str:0:5}     # Start at index 0, take 5 chars → Hello
+echo ${str:6}       # From index 6 to end → World
+echo ${str:6:3}     # From index 6, take 3 chars → Wor
+echo ${str: -5}     # Last 5 characters → World (space before minus!)
+```
+
+### String Replacement
+```bash
+str="I love cats and cats are great"
+
+echo ${str/cats/dogs}       # Replace FIRST match → I love dogs and cats are great
+echo ${str//cats/dogs}      # Replace ALL matches → I love dogs and dogs are great
+echo ${str/cats/}           # Delete first match → I love  and cats are great
+```
+
+### Case Conversion
+```bash
+str="Hello World"
+echo ${str,,}      # All lowercase → hello world
+echo ${str^^}      # All uppercase → HELLO WORLD
+echo ${str,}       # First char lowercase → hello World
+echo ${str^}       # First char uppercase → Hello World
+```
+
+### Remove Prefix / Suffix
+```bash
+filename="report_2024.txt"
+
+echo ${filename#report_}     # Remove shortest prefix match → 2024.txt
+echo ${filename##*_}         # Remove longest prefix match → 2024.txt
+echo ${filename%.txt}        # Remove shortest suffix match → report_2024
+echo ${filename%%.*}         # Remove longest suffix match → report_2024
+```
+
+**Practical use — strip file extension:**
+```bash
+file="nmap_output.xml"
+name="${file%.xml}"          # name = nmap_output
+echo "Processing: $name"
+```
+
+### Default Values
+```bash
+# If variable is unset or empty, use default
+echo ${name:-"Unknown"}        # Use default but don't assign
+name=${name:-"Rasel"}          # Assign default if unset
+
+# If variable is set, use alternative value
+echo ${name:+"Name is set"}
+```
+
+### Check if Variable is Set
+```bash
+if [ -z "${target}" ]; then
+    echo "Error: target is not set"
+    exit 1
+fi
+
+if [ -n "${target}" ]; then
+    echo "Target: $target"
+fi
+```
+
+### String Contains Check
+```bash
+str="Hello World"
+
+if [[ "$str" == *"World"* ]]; then
+    echo "Contains World"
+fi
+
+# Or using grep
+if echo "$str" | grep -q "World"; then
+    echo "Contains World"
+fi
+```
+
+### Split String into Array
+```bash
+data="192.168.1.1:80:open"
+IFS=':' read -ra parts <<< "$data"
+
+echo ${parts[0]}    # 192.168.1.1
+echo ${parts[1]}    # 80
+echo ${parts[2]}    # open
+```
+
+---
+
+# PART 2 — CONTROL FLOW
+
+---
+
+## 08. Conditions & Tests
+
+### Three Ways to Test Conditions
+
+**1. `[ ]` — Traditional test (POSIX compatible)**
+```bash
+if [ "$name" = "Rasel" ]; then ...
+```
+
+**2. `[[ ]]` — Extended test (Bash specific, more powerful) — USE THIS**
+```bash
+if [[ "$name" == "Rasel" ]]; then ...
+```
+
+**3. `(( ))` — Arithmetic test**
+```bash
+if (( count > 10 )); then ...
+```
+
+**Why `[[ ]]` is better:**
+- No word splitting issues
+- Supports `==` with pattern matching (`[[ $str == *.txt ]]`)
+- Supports regex matching with `=~`
+- No need to quote variables (but still good practice)
+
+### Full if/elif/else
+```bash
+#!/usr/bin/env bash
+read -p "Enter HTTP status code: " code
+
+if [[ $code -eq 200 ]]; then
+    echo "OK — Page found"
+elif [[ $code -eq 301 ]] || [[ $code -eq 302 ]]; then
+    echo "Redirect"
+elif [[ $code -eq 403 ]]; then
+    echo "Forbidden — Might still be interesting!"
+elif [[ $code -eq 404 ]]; then
+    echo "Not Found"
+elif [[ $code -eq 500 ]]; then
+    echo "Internal Server Error — Possible vuln?"
+else
+    echo "Other status: $code"
+fi
+```
+
+### Numeric Comparison
+```bash
+if [[ $a -eq $b ]]; then    # equal
+if [[ $a -ne $b ]]; then    # not equal
+if [[ $a -gt $b ]]; then    # greater than
+if [[ $a -lt $b ]]; then    # less than
+if [[ $a -ge $b ]]; then    # greater than or equal
+if [[ $a -le $b ]]; then    # less than or equal
+
+# Or with arithmetic test (cleaner for numbers):
+if (( a > b )); then
+if (( a == b )); then
+if (( a != b )); then
+```
+
+### String Comparison
+```bash
+if [[ "$str1" == "$str2" ]]; then    # equal
+if [[ "$str1" != "$str2" ]]; then    # not equal
+if [[ "$str1" < "$str2" ]]; then     # alphabetically less
+if [[ -z "$str" ]]; then             # empty string
+if [[ -n "$str" ]]; then             # non-empty string
+```
+
+### Pattern Matching in `[[ ]]`
+```bash
+filename="report_2024.txt"
+
+if [[ "$filename" == *.txt ]]; then
+    echo "Text file"
+fi
+
+if [[ "$filename" == report_* ]]; then
+    echo "It's a report"
+fi
+```
+
+### Regex Matching with `=~`
+```bash
+ip="192.168.1.100"
+if [[ "$ip" =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+    echo "Valid IP format"
+fi
+
+email="user@example.com"
+if [[ "$email" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
+    echo "Valid email format"
+fi
+```
+
+### File Tests
+```bash
+if [[ -f "$file" ]]; then echo "Is a regular file"; fi
+if [[ -d "$dir" ]]; then echo "Is a directory"; fi
+if [[ -e "$path" ]]; then echo "Exists (file or dir)"; fi
+if [[ -r "$file" ]]; then echo "Readable"; fi
+if [[ -w "$file" ]]; then echo "Writable"; fi
+if [[ -x "$file" ]]; then echo "Executable"; fi
+if [[ -s "$file" ]]; then echo "Not empty"; fi
+if [[ -L "$file" ]]; then echo "Is a symbolic link"; fi
+if [[ "$f1" -nt "$f2" ]]; then echo "f1 is newer than f2"; fi
+if [[ "$f1" -ot "$f2" ]]; then echo "f1 is older than f2"; fi
+```
+
+### Logical Operators
+```bash
+# AND
+if [[ -f "$file" ]] && [[ -r "$file" ]]; then
+    cat "$file"
+fi
+
+# OR
+if [[ "$port" -eq 80 ]] || [[ "$port" -eq 443 ]]; then
+    echo "Web port"
+fi
+
+# NOT
+if [[ ! -f "$file" ]]; then
+    echo "File does not exist"
+fi
+
+# Inside [[ ]] you can use && and || directly:
+if [[ -f "$file" && -r "$file" ]]; then
+    cat "$file"
+fi
+```
+
+### case Statement
+Use `case` when checking one variable against multiple values:
+```bash
+#!/usr/bin/env bash
+read -p "Choose mode [1-4]: " mode
+
+case "$mode" in
+    1)
+        echo "Quick Recon"
+        ;;
+    2)
+        echo "Full Port Scan"
+        ;;
+    3|4)                         # Multiple values with |
+        echo "Aggressive Mode"
+        ;;
+    [Qq]|quit|exit)              # Pattern matching
+        echo "Exiting..."
+        exit 0
+        ;;
+    *)                           # Default (like else)
+        echo "Invalid option"
+        exit 1
+        ;;
+esac
+```
+
+---
+
+## 09. Loops
+
+### for loop — List
+```bash
+for item in apple banana cherry; do
+    echo "Fruit: $item"
+done
+```
+
+### for loop — Range
+```bash
+for i in {1..10}; do
+    echo "Number: $i"
+done
+
+# With step
+for i in {0..100..10}; do    # 0, 10, 20, ... 100
+    echo $i
+done
+```
+
+### for loop — C-style
+```bash
+for (( i=0; i<10; i++ )); do
+    echo "i = $i"
+done
+
+for (( i=10; i>=0; i-- )); do
+    echo "Countdown: $i"
+done
+```
+
+### for loop — Array
+```bash
+ports=(22 80 443 8080 8443)
+for port in "${ports[@]}"; do
+    echo "Port: $port"
+done
+```
+
+### for loop — Command Output
+```bash
+for file in $(ls *.sh); do
+    echo "Script found: $file"
+done
+
+# Better way using glob:
+for file in *.sh; do
+    echo "Script found: $file"
+done
+```
+
+### for loop — File Line by Line
+```bash
+# Reading a file line by line (the correct way):
+while IFS= read -r line; do
+    echo "Processing: $line"
+done < targets.txt
+
+# With a pipe:
+cat targets.txt | while IFS= read -r line; do
+    echo "Processing: $line"
+done
+```
+
+`IFS=` — prevents stripping leading/trailing whitespace
+`-r` — prevents interpreting backslash escapes
+
+### while loop
+```bash
+count=1
+while [[ $count -le 5 ]]; do
+    echo "Count: $count"
+    ((count++))
+done
+
+# Infinite loop
+while true; do
+    echo "Running... press Ctrl+C to stop"
+    sleep 1
+done
+```
+
+### until loop
+Runs until condition becomes true (opposite of while):
+```bash
+count=1
+until [[ $count -gt 5 ]]; do
+    echo "Count: $count"
+    ((count++))
+done
+```
+
+### Loop Control
+```bash
+break       # Exit the loop entirely
+continue    # Skip current iteration, go to next
+
+for i in {1..10}; do
+    if [[ $i -eq 3 ]]; then
+        continue    # Skip 3
+    fi
+    if [[ $i -eq 7 ]]; then
+        break       # Stop at 7
+    fi
+    echo $i
+done
+# Output: 1 2 4 5 6
+```
+
+### Nested Loops
+```bash
+for host in {1..3}; do
+    for port in 22 80 443; do
+        echo "Checking 192.168.1.$host:$port"
+    done
+done
+```
+
+### select Loop (Menu)
+Creates an interactive menu automatically:
+```bash
+#!/usr/bin/env bash
+PS3="Choose scan type: "    # PS3 = prompt for select
+
+select option in "Quick Scan" "Full Scan" "Version Detection" "Quit"; do
+    case $option in
+        "Quick Scan")
+            echo "Running quick scan..."
+            break
+            ;;
+        "Full Scan")
+            echo "Running full scan..."
+            break
+            ;;
+        "Quit")
+            exit 0
+            ;;
+        *)
+            echo "Invalid option"
+            ;;
+    esac
+done
+```
+
+---
+
+## 10. Functions
+
+### Basic Function
+```bash
+say_hello() {
+    echo "Hello from function!"
+}
+
+say_hello    # Call it
+```
+
+### Function with Parameters
+Functions use the same `$1`, `$2` syntax as scripts for arguments:
+```bash
+greet_user() {
+    local username="$1"
+    local role="$2"
+    echo "Welcome, $username! Your role is: $role"
+}
+
+greet_user "Rasel" "Pentester"
+# Output: Welcome, Rasel! Your role is: Pentester
+```
+
+### Return Values
+Bash functions can only `return` an integer exit code (0-255).
+To return a string, `echo` it and capture with `$()`:
+
+```bash
+# Method 1 — return exit code
+is_port_open() {
+    local host="$1"
+    local port="$2"
+    nc -zw 1 "$host" "$port" &>/dev/null
+    return $?    # 0=success/open, 1=failure/closed
+}
+
+is_port_open "192.168.1.1" "80"
+if [[ $? -eq 0 ]]; then
+    echo "Open"
+fi
+
+# Method 2 — echo a value
+get_http_status() {
+    local url="$1"
+    local status
+    status=$(curl -o /dev/null -s -w "%{http_code}" "$url")
+    echo "$status"
+}
+
+code=$(get_http_status "http://example.com")
+echo "HTTP Status: $code"
+```
+
+### Local Variables (Important!)
+Without `local`, variables are global and can cause bugs:
+```bash
+count=0
+
+increment() {
+    local count=10        # This 'count' is different from the outer one
+    echo "Inside: $count"
+}
+
+increment
+echo "Outside: $count"
+# Inside: 10
+# Outside: 0  (unchanged)
+```
+
+### Function Libraries
+You can store reusable functions in a separate file and import them:
+
+**lib/utils.sh:**
+```bash
+#!/usr/bin/env bash
+# Utility functions library
+
+log_info() {
+    echo "[INFO]  $(date '+%H:%M:%S') — $1"
+}
+
+log_warn() {
+    echo "[WARN]  $(date '+%H:%M:%S') — $1"
+}
+
+log_error() {
+    echo "[ERROR] $(date '+%H:%M:%S') — $1" >&2
+}
+
+check_root() {
+    if [[ $EUID -ne 0 ]]; then
+        log_error "This script must be run as root"
+        exit 1
+    fi
+}
+
+check_command() {
+    local cmd="$1"
+    if ! command -v "$cmd" &>/dev/null; then
+        log_error "Required tool not found: $cmd"
+        exit 1
+    fi
+}
+```
+
+**main_script.sh:**
+```bash
+#!/usr/bin/env bash
+source lib/utils.sh    # Import the library
+
+check_root
+check_command "nmap"
+log_info "Starting scan..."
+```
+
+### Recursive Functions
+```bash
+factorial() {
+    local n="$1"
+    if (( n <= 1 )); then
+        echo 1
+    else
+        local sub
+        sub=$(factorial $((n - 1)))
+        echo $(( n * sub ))
+    fi
+}
+
+result=$(factorial 5)
+echo "5! = $result"    # 120
+```
+
+---
+
+## 11. Arrays
+
+### Indexed Arrays
+```bash
+# Declaration
+fruits=("apple" "banana" "cherry")
+ports=(22 80 443 8080)
+
+# Or add one by one:
+targets=()
+targets[0]="192.168.1.1"
+targets[1]="10.0.0.1"
+targets+=("172.16.0.1")    # Append
+```
+
+### Accessing Elements
+```bash
+echo "${fruits[0]}"        # apple  (index starts at 0)
+echo "${fruits[1]}"        # banana
+echo "${fruits[-1]}"       # cherry (last element)
+echo "${fruits[@]}"        # All elements
+echo "${#fruits[@]}"       # Number of elements: 3
+echo "${!fruits[@]}"       # All indices: 0 1 2
+```
+
+### Slicing an Array
+```bash
+arr=(a b c d e f)
+echo "${arr[@]:2:3}"    # Start at index 2, take 3: c d e
+```
+
+### Modifying Arrays
+```bash
+fruits[1]="mango"          # Replace element
+unset fruits[1]            # Delete element (index still exists as gap)
+fruits=("${fruits[@]}")    # Re-index to remove gaps
+```
+
+### Looping
+```bash
+for item in "${fruits[@]}"; do
+    echo "$item"
+done
+
+# With index:
+for i in "${!fruits[@]}"; do
+    echo "Index $i: ${fruits[$i]}"
+done
+```
+
+### Associative Arrays (like dictionaries)
+Requires `declare -A`:
+```bash
+declare -A ports_map
+ports_map["ssh"]=22
+ports_map["http"]=80
+ports_map["https"]=443
+ports_map["mysql"]=3306
+
+echo "${ports_map["http"]}"         # 80
+echo "${!ports_map[@]}"             # All keys
+echo "${ports_map[@]}"              # All values
+
+# Loop
+for service in "${!ports_map[@]}"; do
+    echo "$service → ${ports_map[$service]}"
+done
+```
+
+### Array from Command Output
+```bash
+# Read command output into array
+mapfile -t lines < file.txt                    # Each line = one element
+mapfile -t hosts < <(nmap -sL 192.168.1.0/24 | grep "report" | awk '{print $5}')
+
+# Or with IFS:
+IFS=$'\n' read -r -d '' -a hosts <<< "$(cat targets.txt)"
+```
+
+---
+
+# PART 3 — POWER TOOLS
+
+---
+
+## 12. Input / Output Redirection
+
+### Standard Streams
+Every Linux process has 3 standard streams:
+| Stream | Number | Default |
+|---|---|---|
+| stdin | 0 | Keyboard |
+| stdout | 1 | Terminal screen |
+| stderr | 2 | Terminal screen |
+
+### Output Redirection
+```bash
+echo "Hello" > file.txt        # Write stdout to file (overwrite)
+echo "Hello" >> file.txt       # Append stdout to file
+ls /fake 2> errors.txt         # Write stderr to file
+ls /fake 2>> errors.txt        # Append stderr to file
+
+# Redirect both stdout and stderr to same file:
+nmap -sV 192.168.1.1 > output.txt 2>&1    # Old style
+nmap -sV 192.168.1.1 &> output.txt        # Bash shorthand
+nmap -sV 192.168.1.1 &>> output.txt       # Append both
+
+# Discard output completely:
+command 2>/dev/null            # Discard errors
+command &>/dev/null            # Discard everything
+command >/dev/null 2>&1        # Same thing
+```
+
+### Input Redirection
+```bash
+sort < unsorted.txt            # Give file as input to sort
+mysql -u root -p < backup.sql  # Run SQL from file
+```
+
+### Here Document (heredoc)
+Write multi-line input directly in script:
+```bash
+cat << EOF
+This is line 1
+This is line 2
+Variables work here: $USER
+EOF
+
+# Write to file:
+cat << EOF > config.txt
+Host = 192.168.1.1
+Port = 22
+User = admin
+EOF
+
+# Indented heredoc (use <<- and indent with TABS only):
+if true; then
+    cat <<- EOF
+        This works
+        With indentation
+    EOF
+fi
+```
+
+### Here String
+Pass a single string as stdin:
+```bash
+grep "error" <<< "$log_content"
+read -r first_word <<< "Hello World"
+echo $first_word    # Hello
+```
+
+### Process Substitution `<()`
+Treat command output as a file:
+```bash
+diff <(sort file1.txt) <(sort file2.txt)    # Compare sorted outputs
+comm <(sort hosts1.txt) <(sort hosts2.txt)  # Find common/unique lines
+```
+
+---
+
+## 13. Pipes
+
+The pipe `|` sends stdout of one command as stdin to the next.
+
+```bash
+command1 | command2 | command3
+```
+
+### Basic Examples
+```bash
+ls -la | grep ".sh"                 # Find .sh files in listing
+cat /etc/passwd | grep "bash"       # Find users with bash
+ps aux | grep "apache"              # Find apache processes
+history | grep "nmap"               # Find past nmap commands
+```
+
+### Pipelines with Multiple Commands
+```bash
+cat /etc/passwd | cut -d: -f1 | sort | uniq    # List all users sorted
+
+nmap -p 80,443 192.168.1.0/24 | grep "open" | awk '{print $1}' | sort -u
+```
+
+### tee — Split Output (Screen + File Simultaneously)
+```bash
+nmap -sV 192.168.1.1 | tee scan_output.txt    # Print AND save
+nmap -sV 192.168.1.1 | tee -a scan_output.txt # Print AND append
+```
+
+### xargs — Pass Pipe Output as Arguments
+```bash
+# Some commands don't accept stdin, they need arguments
+cat ips.txt | xargs -I{} nmap -p 80 {}       # Run nmap for each IP
+cat urls.txt | xargs -n 1 curl -I            # Curl each URL
+find . -name "*.log" | xargs rm              # Delete all .log files
+
+# -I{} = placeholder for each input item
+# -n 1 = one item per command
+# -P 4 = run 4 in parallel (great for speed!)
+cat targets.txt | xargs -P 4 -I{} nmap -p 80,443 {}
+```
+
+---
+
+## 13. Text Processing Tools
+
+These are the most important tools for a security professional working in bash.
+
+### grep — Search for Patterns
+
+```bash
+grep "pattern" file.txt             # Basic search
+grep -i "pattern" file.txt          # Case-insensitive
+grep -r "pattern" /var/log/         # Recursive search in directory
+grep -v "pattern" file.txt          # Invert — lines NOT matching
+grep -n "pattern" file.txt          # Show line numbers
+grep -c "pattern" file.txt          # Count matching lines
+grep -l "pattern" *.txt             # Only show filenames
+grep -w "word" file.txt             # Whole word match only
+grep -A 3 "pattern" file.txt        # Show 3 lines AFTER match
+grep -B 3 "pattern" file.txt        # Show 3 lines BEFORE match
+grep -C 3 "pattern" file.txt        # Show 3 lines AROUND match
+grep -E "regex" file.txt            # Extended regex (same as egrep)
+grep -o "pattern" file.txt          # Print ONLY matching part
+grep -q "pattern" file.txt          # Quiet mode — only sets exit code
+```
+
+**Practical Security Examples:**
+```bash
+grep "Failed password" /var/log/auth.log           # Failed SSH logins
+grep "Accepted password" /var/log/auth.log         # Successful SSH logins
+grep -i "error\|warning\|critical" app.log         # Multiple patterns with |
+grep -oE "[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}" access.log  # Extract IPs
+grep "POST\|PUT\|DELETE" access.log                # Find write methods
+grep -v "^#\|^$" /etc/ssh/sshd_config             # Config without comments/blanks
+```
+
+---
+
+### sed — Stream Editor (Find & Replace + More)
+
+```bash
+# Basic substitution
+sed 's/old/new/' file.txt            # Replace first occurrence per line
+sed 's/old/new/g' file.txt           # Replace ALL occurrences
+sed 's/old/new/gi' file.txt          # Case-insensitive replace all
+
+# Edit in-place (modify the actual file)
+sed -i 's/old/new/g' file.txt
+sed -i.bak 's/old/new/g' file.txt    # Create backup first (.bak)
+
+# Delete lines
+sed '/pattern/d' file.txt            # Delete lines matching pattern
+sed '5d' file.txt                    # Delete line 5
+sed '5,10d' file.txt                 # Delete lines 5-10
+sed '/^$/d' file.txt                 # Delete empty lines
+sed '/^#/d' file.txt                 # Delete comment lines
+
+# Print specific lines
+sed -n '5p' file.txt                 # Print only line 5
+sed -n '5,10p' file.txt              # Print lines 5-10
+sed -n '/pattern/p' file.txt         # Print only matching lines
+
+# Insert / append
+sed '3i\New line inserted before line 3' file.txt
+sed '3a\New line added after line 3' file.txt
+```
+
+**Practical Examples:**
+```bash
+# Clean up nmap output
+sed '/^#/d; /^$/d' nmap_results.txt
+
+# Extract domain from URL
+echo "https://www.example.com/path" | sed 's|https://||; s|/.*||'
+# Output: www.example.com
+
+# Add line numbers
+sed = file.txt | sed 'N; s/\n/\t/'
+
+# Remove ANSI color codes from output
+sed 's/\x1B\[[0-9;]*[mK]//g' colored_output.txt
+```
+
+---
+
+### awk — Pattern Scanning & Data Extraction
+
+awk processes text line by line, splitting each line into fields.
+
+By default, fields are separated by whitespace:
+`$1` = first field, `$2` = second, `$NF` = last field, `$0` = whole line
+
+```bash
+awk '{print $1}' file.txt              # Print first column
+awk '{print $1, $3}' file.txt          # Print columns 1 and 3
+awk '{print $NF}' file.txt             # Print last column
+awk 'NR==5' file.txt                   # Print line 5
+awk 'NR>=5 && NR<=10' file.txt         # Print lines 5-10
+awk '/pattern/' file.txt               # Print lines matching pattern
+awk '!/pattern/' file.txt              # Print lines NOT matching
+
+# Custom field separator
+awk -F: '{print $1}' /etc/passwd       # Split by colon, print first field
+awk -F, '{print $2}' data.csv          # CSV — print second field
+
+# Conditions
+awk '$3 > 100' file.txt                # Print lines where field 3 > 100
+awk '$1 == "open"' nmap.txt            # Print lines where field 1 is "open"
+
+# Multiple actions
+awk -F: '$3 >= 1000 {print $1, $3}' /etc/passwd    # Normal users only
+
+# Built-in variables
+# NR  = current line number
+# NF  = number of fields in current line
+# FS  = field separator
+# OFS = output field separator
+
+# Print with custom output separator
+awk -F: '{OFS="|"; print $1,$3,$6}' /etc/passwd
+
+# Math in awk
+awk '{sum += $1} END {print "Total:", sum}' numbers.txt
+awk '{sum += $1} END {print "Average:", sum/NR}' numbers.txt
+
+# BEGIN block runs before processing
+awk 'BEGIN {print "=== Results ==="} {print $0} END {print "=== Done ==="}' file.txt
+```
+
+**Practical Examples:**
+```bash
+# Extract IP:PORT pairs from nmap output
+nmap -p 22,80,443 192.168.1.0/24 | awk '/open/{print $0}'
+
+# Get all login usernames from auth.log
+grep "Failed password" /var/log/auth.log | awk '{print $9}' | sort | uniq -c | sort -rn
+
+# Get all IPs that failed SSH login
+grep "Failed password" /var/log/auth.log | awk '{print $11}' | sort | uniq -c | sort -rn
+
+# Extract URLs from access log
+awk '{print $7}' /var/log/apache2/access.log | sort | uniq -c | sort -rn | head -20
+```
+
+---
+
+### cut — Cut Sections from Lines
+
+```bash
+cut -d: -f1 /etc/passwd              # Delimiter=:, print field 1
+cut -d: -f1,3 /etc/passwd            # Fields 1 and 3
+cut -d: -f1-3 /etc/passwd            # Fields 1 through 3
+cut -c1-10 file.txt                  # Characters 1 through 10
+cut -c-5 file.txt                    # First 5 characters
+cut -c10- file.txt                   # From character 10 to end
+```
+
+---
+
+### sort — Sort Lines
+
+```bash
+sort file.txt                        # Alphabetical sort
+sort -r file.txt                     # Reverse sort
+sort -n file.txt                     # Numerical sort (not lexicographic)
+sort -rn file.txt                    # Reverse numerical
+sort -u file.txt                     # Sort and remove duplicates
+sort -k2 file.txt                    # Sort by second column (field)
+sort -k2 -n file.txt                 # Sort by second column numerically
+sort -t: -k3 -n /etc/passwd          # Sort by UID (field 3, colon delimiter)
+sort -R file.txt                     # Random shuffle
+```
+
+---
+
+### uniq — Remove Duplicate Lines
+
+**Note: uniq only removes ADJACENT duplicates. Always sort first!**
+
+```bash
+sort file.txt | uniq                 # Remove duplicates
+sort file.txt | uniq -c              # Count occurrences
+sort file.txt | uniq -d              # Show only DUPLICATE lines
+sort file.txt | uniq -u              # Show only UNIQUE lines (no duplicates)
+
+# Top 10 most common IPs in access log:
+awk '{print $1}' access.log | sort | uniq -c | sort -rn | head -10
+```
+
+---
+
+### tr — Translate / Delete Characters
+
+```bash
+echo "Hello World" | tr 'a-z' 'A-Z'        # To uppercase
+echo "Hello World" | tr 'A-Z' 'a-z'        # To lowercase
+echo "Hello   World" | tr -s ' '           # Squeeze multiple spaces
+echo "Hello\nWorld" | tr -d '\n'           # Delete newlines
+echo "abc123" | tr -dc 'a-zA-Z'           # Delete non-letters
+echo "abc123" | tr -dc '0-9'              # Keep only numbers
+
+# Replace colons with tabs:
+cat /etc/passwd | tr ':' '\t'
+```
+
+---
+
+### wc — Count Words, Lines, Characters
+
+```bash
+wc file.txt               # Lines, words, characters
+wc -l file.txt            # Count lines only
+wc -w file.txt            # Count words only
+wc -c file.txt            # Count bytes
+wc -m file.txt            # Count characters
+
+# Count open ports in nmap output:
+nmap 192.168.1.1 | grep "open" | wc -l
+```
+
+---
+
+## 15. Regular Expressions
+
+Regular expressions (regex) let you match complex text patterns.
+
+### Basic Regex
+
+| Symbol | Meaning |
+|---|---|
+| `.` | Any single character |
+| `*` | Zero or more of previous |
+| `+` | One or more of previous |
+| `?` | Zero or one of previous |
+| `^` | Start of line |
+| `$` | End of line |
+| `[]` | Character class |
+| `[^]` | Negated character class |
+| `\|` | OR |
+| `()` | Group |
+| `{n}` | Exactly n times |
+| `{n,m}` | Between n and m times |
+| `\d` | Digit (in some tools) |
+| `\w` | Word character |
+| `\s` | Whitespace |
+
+### Examples
+```bash
+# Match lines starting with "error"
+grep "^error" log.txt
+
+# Match lines ending with ".php"
+grep "\.php$" access.log
+
+# Match IP addresses
+grep -oE "([0-9]{1,3}\.){3}[0-9]{1,3}" file.txt
+
+# Match email addresses
+grep -oE "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}" file.txt
+
+# Match URLs
+grep -oE "https?://[a-zA-Z0-9./?=_%&-]+" file.txt
+
+# Match lines with exactly 3 digits
+grep -E "^[0-9]{3}$" file.txt
+
+# Match port numbers (1-65535)
+grep -oE "\b([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])\b"
+```
+
+---
+
+# PART 4 — PROFESSIONAL SCRIPTING
+
+---
+
+## 16. Script Structure & Best Practices
+
+### Professional Script Template
+```bash
+#!/usr/bin/env bash
+# =============================================================
+# Script     : recon.sh
+# Description: Automated reconnaissance tool
+# Author     : Rasel Hossain
+# Version    : 1.0
+# Usage      : ./recon.sh -t <target> [-o output_dir] [-v]
+# =============================================================
+
+set -euo pipefail
+# set -e = exit immediately if a command fails
+# set -u = treat unset variables as errors
+# set -o pipefail = catch errors in pipelines
+
+# ---- Colors ----
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+NC='\033[0m'    # No Color (reset)
+
+# ---- Constants ----
+readonly SCRIPT_NAME="$(basename "$0")"
+readonly SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+readonly TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
+
+# ---- Defaults ----
+TARGET=""
+OUTPUT_DIR="./output_${TIMESTAMP}"
+VERBOSE=false
+THREADS=10
+
+# ---- Logging Functions ----
+log_info()  { echo -e "${GREEN}[INFO]${NC}  $1"; }
+log_warn()  { echo -e "${YELLOW}[WARN]${NC}  $1"; }
+log_error() { echo -e "${RED}[ERROR]${NC} $1" >&2; }
+log_debug() { [[ "$VERBOSE" == true ]] && echo -e "${CYAN}[DEBUG]${NC} $1"; }
+log_step()  { echo -e "\n${BLUE}[*]${NC} $1"; }
+
+# ---- Usage / Help ----
+usage() {
+    cat << EOF
+Usage: $SCRIPT_NAME [OPTIONS]
+
+Options:
+  -t, --target <ip/domain>   Target to scan (required)
+  -o, --output <dir>         Output directory (default: ./output_TIMESTAMP)
+  -T, --threads <num>        Number of threads (default: 10)
+  -v, --verbose              Enable verbose output
+  -h, --help                 Show this help
+
+Examples:
+  $SCRIPT_NAME -t 192.168.1.1
+  $SCRIPT_NAME -t example.com -o ./results -v
+EOF
+    exit 0
+}
+
+# ---- Argument Parsing ----
+parse_args() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -t|--target)   TARGET="$2"; shift 2 ;;
+            -o|--output)   OUTPUT_DIR="$2"; shift 2 ;;
+            -T|--threads)  THREADS="$2"; shift 2 ;;
+            -v|--verbose)  VERBOSE=true; shift ;;
+            -h|--help)     usage ;;
+            *)             log_error "Unknown option: $1"; usage ;;
+        esac
+    done
+}
+
+# ---- Validation ----
+validate() {
+    if [[ -z "$TARGET" ]]; then
+        log_error "Target is required. Use -t <target>"
+        usage
+    fi
+
+    if ! command -v nmap &>/dev/null; then
+        log_error "nmap is not installed"
+        exit 1
+    fi
+}
+
+# ---- Main ----
+main() {
+    parse_args "$@"
+    validate
+
+    mkdir -p "$OUTPUT_DIR"
+    log_info "Starting scan on: $TARGET"
+    log_info "Output directory: $OUTPUT_DIR"
+
+    # ... rest of script
+}
+
+main "$@"
+```
+
+### Colors in Scripts
+```bash
+# Define colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+PURPLE='\033[0;35m'
+CYAN='\033[0;36m'
+WHITE='\033[1;37m'
+NC='\033[0m'    # Reset
+
+# Usage
+echo -e "${RED}Error!${NC}"
+echo -e "${GREEN}Success!${NC}"
+echo -e "${YELLOW}Warning!${NC}"
+
+# printf is more reliable than echo -e for colors
+printf "${GREEN}[+] ${NC}Host is alive\n"
+printf "${RED}[-] ${NC}Host is down\n"
+```
+
+---
+
+## 17. Error Handling & Debugging
+
+### set Options
+```bash
+set -e          # Exit on any error
+set -u          # Exit if undefined variable is used
+set -x          # Print each command before executing (debug mode)
+set -o pipefail # Exit if any command in a pipe fails
+set -euo pipefail  # Combine them all (professional standard)
+
+# Disable:
+set +e          # Allow errors to continue
+set +x          # Stop debug printing
+```
+
+### trap — Handle Signals and Cleanup
+```bash
+# Run cleanup function when script exits (for any reason)
+cleanup() {
+    echo "Cleaning up temp files..."
+    rm -f /tmp/myscript_$$_*
+}
+
+trap cleanup EXIT       # Run on exit
+trap cleanup SIGINT     # Run on Ctrl+C
+trap cleanup SIGTERM    # Run on kill
+
+# Combined:
+trap cleanup EXIT SIGINT SIGTERM
+
+# Example with temp file:
+TMPFILE=$(mktemp /tmp/scan_XXXXXX)
+trap "rm -f $TMPFILE" EXIT
+
+# Emergency exit on Ctrl+C
+trap 'echo -e "\n[!] Interrupted"; exit 1' SIGINT
+```
+
+### Custom Error Handler
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+error_handler() {
+    local line_number="$1"
+    local command="$2"
+    echo "[ERROR] Command failed at line $line_number: $command"
+    exit 1
+}
+
+trap 'error_handler $LINENO "$BASH_COMMAND"' ERR
+```
+
+### Debugging Techniques
+```bash
+# Method 1: Run script with debug flag
+bash -x script.sh
+
+# Method 2: Add set -x inside script
+set -x    # Start debug
+some_commands
+set +x    # Stop debug
+
+# Method 3: Debug specific section
+{
+    set -x
+    problematic_function
+    set +x
+} 2>&1 | tee debug.log
+
+# Method 4: Check exit codes
+command
+echo "Exit code: $?"
+
+# Method 5: Print variable values
+echo "DEBUG: variable = ${variable}" >&2    # Send to stderr
+```
+
+### Input Validation Functions
+```bash
+validate_ip() {
+    local ip="$1"
+    local regex='^([0-9]{1,3}\.){3}[0-9]{1,3}$'
+    if [[ "$ip" =~ $regex ]]; then
+        IFS='.' read -ra octets <<< "$ip"
+        for octet in "${octets[@]}"; do
+            if (( octet > 255 )); then
+                return 1
+            fi
+        done
+        return 0
+    fi
+    return 1
+}
+
+validate_port() {
+    local port="$1"
+    if [[ "$port" =~ ^[0-9]+$ ]] && (( port >= 1 && port <= 65535 )); then
+        return 0
+    fi
+    return 1
+}
+
+validate_domain() {
+    local domain="$1"
+    local regex='^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$'
+    [[ "$domain" =~ $regex ]]
+}
+
+# Usage:
+if validate_ip "$target"; then
+    echo "Valid IP"
+else
+    log_error "Invalid IP address: $target"
+    exit 1
+fi
+```
+
+---
+
+## 18. File & Directory Operations
+
+```bash
+# Check before operating
+[[ -f "$file" ]] || { echo "File not found"; exit 1; }
+[[ -d "$dir" ]]  || mkdir -p "$dir"
+
+# Safe file creation with mktemp
+tmpfile=$(mktemp)                        # /tmp/tmp.XXXXXXXXXX
+tmpdir=$(mktemp -d)                      # Create temp directory
+tmpfile=$(mktemp /tmp/scan_XXXXXX.txt)   # Custom pattern
+
+# File reading methods
+while IFS= read -r line; do
+    echo "Line: $line"
+done < "$file"
+
+# Read entire file into variable
+content=$(cat "$file")
+# Or (more efficient):
+content=$(<"$file")
+
+# Write to file
+echo "data" > file.txt          # Overwrite
+echo "data" >> file.txt         # Append
+printf "%s\n" "line1" "line2" > file.txt
+
+# Compare files
+diff file1.txt file2.txt
+cmp file1.txt file2.txt         # Byte comparison
+
+# File info
+stat file.txt                   # Detailed file info
+file document.pdf               # Determine file type
+md5sum file.txt                 # MD5 hash
+sha256sum file.txt              # SHA256 hash
+
+# Find and process
+find . -name "*.txt" -exec wc -l {} \;
+find . -name "*.log" -mtime -7          # Modified in last 7 days
+find . -size +10M                       # Files larger than 10MB
+find /tmp -user www-data                # Files owned by www-data
+```
+
+---
+
+## 19. Process Management
+
+```bash
+# View processes
+ps aux                          # All processes
+ps aux | grep nginx             # Find specific process
+pgrep -l ssh                    # Find processes by name, show PID+name
+pidof apache2                   # Get PID of process
+
+# Kill processes
+kill PID                        # Send SIGTERM (graceful)
+kill -9 PID                     # Send SIGKILL (force)
+killall nginx                   # Kill all by name
+pkill -f "python script.py"     # Kill by pattern
+
+# Background processes
+command &                       # Run in background
+sleep 100 &
+echo "PID: $!"                  # Get PID of last background process
+
+# Bring to foreground/background
+jobs                            # List background jobs
+fg %1                           # Bring job 1 to foreground
+bg %1                           # Resume job 1 in background
+Ctrl+Z                          # Suspend current process
+
+# Wait for background processes
+command1 &
+command2 &
+wait                            # Wait for all background jobs
+wait $!                         # Wait for specific PID
+
+# Parallel execution with wait:
+for target in "${targets[@]}"; do
+    nmap -p 80 "$target" &
+done
+wait
+echo "All scans complete"
+
+# nohup — survive terminal close
+nohup long_scan.sh > output.log 2>&1 &
+```
+
+---
+
+## 20. Scheduling with Cron
+
+### Cron Syntax
+```
+* * * * * command
+│ │ │ │ │
+│ │ │ │ └── Day of week (0-7, Sunday=0 or 7)
+│ │ │ └──── Month (1-12)
+│ │ └────── Day of month (1-31)
+│ └──────── Hour (0-23)
+└────────── Minute (0-59)
+```
+
+### Special Characters
+```
+*  = every (any value)
+,  = list: 1,3,5
+-  = range: 1-5
+/  = step: */5 (every 5)
+```
+
+### Examples
+```bash
+# Edit crontab
+crontab -e
+
+# Examples:
+*/5 * * * * /home/rasel/scripts/monitor.sh           # Every 5 minutes
+0 * * * * /home/rasel/scripts/hourly_scan.sh         # Every hour
+0 2 * * * /home/rasel/scripts/backup.sh              # Every day at 2 AM
+0 2 * * 0 /home/rasel/scripts/weekly.sh              # Every Sunday at 2 AM
+0 2 1 * * /home/rasel/scripts/monthly.sh             # 1st of every month
+
+# With output logging:
+0 * * * * /home/rasel/scripts/scan.sh >> /var/log/scan.log 2>&1
+
+# View current crontab
+crontab -l
+
+# Remove crontab
+crontab -r
+```
+
+---
+
+# PART 5 — CYBERSECURITY APPLICATIONS
+
+---
+
+## 21. Network Commands in Bash
+
+```bash
+# Ping
+ping -c 4 192.168.1.1             # 4 packets
+ping -c 1 -W 1 192.168.1.1        # 1 packet, 1 second timeout
+
+# curl — HTTP requests
+curl http://example.com                           # GET request
+curl -I http://example.com                        # Headers only
+curl -X POST -d "user=a&pass=b" http://target/login
+curl -b "session=abc123" http://target/admin      # With cookie
+curl -H "X-Forwarded-For: 127.0.0.1" http://target
+curl -s -o /dev/null -w "%{http_code}" http://url  # Only status code
+curl -L http://url                                # Follow redirects
+curl --max-time 5 http://url                      # 5 second timeout
+
+# wget
+wget http://example.com/file.txt
+wget -q --spider http://url        # Check if URL exists (quiet)
+
+# netcat — Swiss army knife
+nc -zv 192.168.1.1 80              # Check if port is open
+nc -zv 192.168.1.1 1-1000          # Scan port range
+nc -lvp 4444                       # Listen on port 4444
+nc 192.168.1.1 4444                # Connect to port
+
+# DNS lookups
+nslookup example.com
+dig example.com
+dig example.com MX                 # Mail records
+dig example.com ANY                # All records
+host example.com
+whois example.com
+
+# Network info
+ip addr                            # IP addresses
+ip route                           # Routing table
+ss -tlnp                           # Listening TCP ports
+ss -ulnp                           # Listening UDP ports
+netstat -an                        # All connections
+arp -a                             # ARP table
+```
+
+---
+
+## 22. Recon Automation Scripts
+
+### Host Discovery
+```bash
+#!/usr/bin/env bash
+# Ping sweep — find alive hosts in subnet
+
+set -euo pipefail
+
+NETWORK="${1:-192.168.1}"
+ALIVE_HOSTS=()
+
+echo "[*] Scanning ${NETWORK}.0/24 ..."
+echo ""
+
+for host in {1..254}; do
+    ip="${NETWORK}.${host}"
+    if ping -c 1 -W 1 "$ip" &>/dev/null; then
+        echo "[+] ALIVE: $ip"
+        ALIVE_HOSTS+=("$ip")
+    fi
+done
+
+echo ""
+echo "[*] Scan complete. Found ${#ALIVE_HOSTS[@]} alive hosts."
+printf '%s\n' "${ALIVE_HOSTS[@]}" > alive_hosts.txt
+echo "[*] Saved to alive_hosts.txt"
+```
+
+### Port Scanner
+```bash
+#!/usr/bin/env bash
+# Simple TCP port scanner using /dev/tcp
+
+TARGET="$1"
+START_PORT="${2:-1}"
+END_PORT="${3:-1024}"
+
+echo "[*] Scanning $TARGET ports $START_PORT-$END_PORT"
+echo ""
+
+for (( port=START_PORT; port<=END_PORT; port++ )); do
+    (echo >/dev/tcp/"$TARGET"/"$port") &>/dev/null &&
+        echo "[OPEN] Port $port"
+done
+
+echo "[*] Done"
+```
+
+### Domain Recon Script
+```bash
+#!/usr/bin/env bash
+# Domain information gathering
+
+TARGET="$1"
+OUTPUT_DIR="recon_${TARGET}_$(date +%Y%m%d)"
+
+[[ -z "$TARGET" ]] && { echo "Usage: $0 <domain>"; exit 1; }
+
+mkdir -p "$OUTPUT_DIR"
+cd "$OUTPUT_DIR"
+
+echo "[*] Starting recon on: $TARGET"
+echo "================================="
+
+# WHOIS
+echo "[*] WHOIS lookup..."
+whois "$TARGET" > whois.txt 2>/dev/null && echo "[+] Saved: whois.txt"
+
+# DNS Records
+echo "[*] DNS enumeration..."
+{
+    echo "=== A Records ==="
+    dig A "$TARGET" +short
+    echo "=== MX Records ==="
+    dig MX "$TARGET" +short
+    echo "=== NS Records ==="
+    dig NS "$TARGET" +short
+    echo "=== TXT Records ==="
+    dig TXT "$TARGET" +short
+} > dns_records.txt && echo "[+] Saved: dns_records.txt"
+
+# HTTP Headers
+echo "[*] HTTP headers..."
+curl -sI "http://$TARGET" > http_headers.txt 2>/dev/null && echo "[+] Saved: http_headers.txt"
+curl -sI "https://$TARGET" > https_headers.txt 2>/dev/null && echo "[+] Saved: https_headers.txt"
+
+echo ""
+echo "[*] Recon complete. Results in: $OUTPUT_DIR/"
+```
+
+---
+
+## 23. Log Analysis
+
+```bash
+#!/usr/bin/env bash
+# Analyze auth.log for security events
+
+LOG="/var/log/auth.log"
+[[ ! -f "$LOG" ]] && LOG="/var/log/secure"   # CentOS uses /var/log/secure
+
+echo "=== Failed Login Attempts ==="
+grep "Failed password" "$LOG" | \
+    awk '{print $11}' | \
+    sort | uniq -c | sort -rn | \
+    head -20
+
+echo ""
+echo "=== Attacked Usernames ==="
+grep "Failed password" "$LOG" | \
+    awk '{print $9}' | \
+    sort | uniq -c | sort -rn | \
+    head -20
+
+echo ""
+echo "=== Successful Logins ==="
+grep "Accepted" "$LOG" | \
+    awk '{print $9, $11}' | \
+    sort | uniq -c | sort -rn
+
+echo ""
+echo "=== Total Failed Attempts ==="
+grep -c "Failed password" "$LOG"
+```
+
+---
+
+## 24. Custom Tool Building
+
+### HTTP Status Checker
+```bash
+#!/usr/bin/env bash
+# Check HTTP status codes for a list of URLs
+
+URL_FILE="${1:-urls.txt}"
+TIMEOUT=10
+
+[[ ! -f "$URL_FILE" ]] && { echo "Error: $URL_FILE not found"; exit 1; }
+
+printf "%-50s %s\n" "URL" "STATUS"
+printf "%-50s %s\n" "---" "------"
+
+while IFS= read -r url; do
+    [[ -z "$url" ]] && continue
+    status=$(curl -o /dev/null -s -w "%{http_code}" --max-time "$TIMEOUT" "$url")
+    case "$status" in
+        200)  printf "%-50s ${GREEN}%s${NC}\n" "$url" "$status" ;;
+        301|302) printf "%-50s ${YELLOW}%s${NC}\n" "$url" "$status" ;;
+        403|401) printf "%-50s ${RED}%s${NC}\n" "$url" "$status" ;;
+        404)  printf "%-50s %s\n" "$url" "$status" ;;
+        *)    printf "%-50s ${CYAN}%s${NC}\n" "$url" "$status" ;;
+    esac
+done < "$URL_FILE"
+```
+
+### Directory Brute Forcer
+```bash
+#!/usr/bin/env bash
+# Basic directory brute forcer
+
+TARGET="${1}"
+WORDLIST="${2:-/usr/share/wordlists/dirb/common.txt}"
+THREADS=20
+
+[[ -z "$TARGET" ]] && { echo "Usage: $0 <URL> [wordlist]"; exit 1; }
+[[ ! -f "$WORDLIST" ]] && { echo "Wordlist not found: $WORDLIST"; exit 1; }
+
+echo "[*] Target: $TARGET"
+echo "[*] Wordlist: $WORDLIST ($(wc -l < "$WORDLIST") words)"
+echo ""
+
+check_dir() {
+    local url="${TARGET}/${1}"
+    local code
+    code=$(curl -o /dev/null -s -w "%{http_code}" --max-time 5 "$url")
+    case "$code" in
+        200)      echo "[200] FOUND  : $url" ;;
+        301|302)  echo "[${code}] REDIRECT: $url" ;;
+        403)      echo "[403] FORBIDDEN: $url" ;;
+    esac
+}
+
+export -f check_dir
+export TARGET
+
+cat "$WORDLIST" | xargs -P "$THREADS" -I{} bash -c 'check_dir "$@"' _ {}
+
+echo ""
+echo "[*] Done."
+```
+
+---
+
+# PART 6 — PRACTICE PROJECTS
+
+---
+
+## 25. Projects — Beginner to Advanced
+
+### Beginner Projects
+
+**1. System Info Script**
+Write a script that shows: hostname, IP, OS version, uptime, memory usage, disk usage, logged-in users.
+
+**2. Backup Script**
+Script that compresses a given directory into a `.tar.gz` file with a timestamp in the filename and moves it to a backup folder.
+
+**3. User Creator**
+Script that takes a username as argument, creates the user, sets a random password, and logs everything to a file.
+
+---
+
+### Intermediate Projects
+
+**4. Network Monitor**
+Every 30 seconds, check a list of hosts from a file. If a host goes down, print alert with timestamp. Log all up/down events.
+
+**5. Log Parser**
+Parse `/var/log/auth.log`, extract IPs with more than 5 failed logins, and print them sorted by frequency.
+
+**6. File Integrity Checker**
+Calculate SHA256 hash of all files in a directory and save to a baseline file. Run again later and compare — report any changes.
+
+---
+
+### Advanced Projects
+
+**7. Recon Framework**
+Full automated recon tool: takes a domain → runs whois, DNS enum, port scan, HTTP header grab, Wayback Machine check → saves everything in organized folders → generates a text report.
+
+**8. Brute Force Detector**
+Monitor auth.log in real time (`tail -f`), count failed login attempts per IP, automatically add IPs over threshold to `/etc/hosts.deny`.
+
+**9. Web Vulnerability Scanner (Basic)**
+Takes a URL, extracts all forms and links, tests for SQL injection (error-based) and XSS by injecting payloads, logs all interesting responses.
+
+---
+
+## Study Roadmap
+
+```
+WEEK 1-2   : Parts 1-2 (Basics, Variables, Conditions, Loops)
+             → Write 5 small scripts daily
+
+WEEK 3     : Part 3 (Redirection, Pipes, grep/awk/sed)
+             → Practice with real log files
+
+WEEK 4     : Part 4 (Professional scripting, Error handling)
+             → Rewrite old scripts with proper structure
+
+WEEK 5-6   : Part 5 (Cybersecurity applications)
+             → Build recon tools, analyze logs
+
+WEEK 7-8   : Practice Projects
+             → Complete all 9 projects
+
+ONGOING    : Use Bash for EVERYTHING
+             → Never manually do something that can be scripted
+```
+
+---
+
+## Quick Reference Card
+
+```bash
+# Variables
+var="value"           ${var}              $((math))
+$0 $1 $#              $? $$ $!
+
+# String ops
+${#var}               ${var:0:5}           ${var/old/new}
+${var,,} ${var^^}     ${var:-default}
+
+# Test operators
+-eq -ne -gt -lt       == != -z -n
+-f -d -e -r -w -x     && || !
+
+# Loops
+for i in list         for((i=0;i<n;i++))  while [[ cond ]]
+
+# I/O
+> >> 2> &>            < <<< |              tee xargs
+
+# Text tools
+grep -iorvn           sed 's/a/b/g'       awk '{print $1}'
+cut -d: -f1           sort -rnu           uniq -c
+```
+
+---
+*This guide is self-contained. Master everything here and you will be ahead of most script kiddies and many professional sysadmins.*
